@@ -442,10 +442,25 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     /*optional layer styles*/
     for(i=0; i<tileset->styles->nelts; i++) {
       char *style = APR_ARRAY_IDX(tileset->styles,i,char*);
+      char *styleurl = NULL;
       ctx->log(ctx,MAPCACHE_ERROR,"New style %s", style);
       tmpxml = ezxml_add_child(layerxml,"Style",0);
       ezxml_set_txt(ezxml_add_child(tmpxml,"Name",0),style);
       ezxml_set_txt(ezxml_add_child(tmpxml,"Title",0),style);
+      ctx->log(ctx,MAPCACHE_ERROR,"URL to USE %s", url);
+      tmpxml = ezxml_add_child(tmpxml,"LegendURL",0);
+      ezxml_set_attr(tmpxml,"width","250");
+      ezxml_set_attr(tmpxml,"height","250");
+      ezxml_set_txt(ezxml_add_child(tmpxml,"Format",0),"image/png");
+      tmpxml = ezxml_add_child(tmpxml,"OnlineResource",0);
+      ezxml_set_attr(tmpxml,"xmlns:xlink","http://www.w3.org/1999/xlink");
+      ezxml_set_attr(tmpxml,"xlink:type","simple");
+      styleurl = apr_pstrdup(ctx->pool,url);
+      styleurl = apr_pstrcat(ctx->pool,styleurl,"version=1.1.1&service=WMS&request=GetLegendGraphic&layer=",NULL);
+      styleurl = apr_pstrcat(ctx->pool,styleurl,tileset->name,NULL);
+      styleurl = apr_pstrcat(ctx->pool,styleurl,"&format=image/png&style=",NULL);
+      styleurl = apr_pstrcat(ctx->pool,styleurl,style,NULL);
+      ezxml_set_attr(tmpxml,"xlink:href",styleurl);
     }
     tileindex_index = apr_hash_next(tileindex_index);
   }
