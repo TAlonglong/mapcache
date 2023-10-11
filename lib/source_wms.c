@@ -64,6 +64,8 @@ void _mapcache_source_wms_render_map(mapcache_context *ctx, mapcache_source *pso
   apr_table_setn(params,"HEIGHT",apr_psprintf(ctx->pool,"%d",map->height));
   apr_table_setn(params,"FORMAT","image/png");
   apr_table_setn(params,"SRS",map->grid_link->grid->srs);
+  ctx->log(ctx,MAPCACHE_ERROR,"MAP sdtyøle %s", map->style);
+  apr_table_setn(params,"STYLE",map->style);
 
   apr_table_overlap(params,wms->getmap_params,APR_OVERLAP_TABLES_SET);
 
@@ -335,6 +337,7 @@ mapcache_source* mapcache_source_wms_create(mapcache_context *ctx)
   apr_table_add(source->wms_default_params,"REQUEST","GetMap");
   apr_table_add(source->wms_default_params,"SERVICE","WMS");
   apr_table_add(source->wms_default_params,"STYLES","");
+  apr_table_add(source->wms_default_params,"STYLE","");
   return (mapcache_source*)source;
 }
 
