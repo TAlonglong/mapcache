@@ -655,6 +655,8 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
   }
 
   if(isGetMap) {
+    ctx->log(ctx,MAPCACHE_ERROR,"GETMAP STYLES %s", apr_table_get(params,"STYLES"));
+    ctx->log(ctx,MAPCACHE_ERROR,"GETMAP STYLE %s", apr_table_get(params,"STYLE"));
     str = apr_table_get(params,"LAYERS");
     if(!str) {
       errcode = 400;
@@ -837,6 +839,11 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           map->width = width;
           map->height = height;
           map->extent = extent;
+          str = apr_table_get(params,"STYLE");
+          if(str) {
+            ctx->log(ctx,MAPCACHE_ERROR, "setting map style %s", str);
+            map->style = str;
+          }
           map_req->maps[map_req->nmaps++] = map;
           dimtable = map->dimensions;
         }

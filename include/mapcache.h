@@ -509,6 +509,7 @@ struct mapcache_map {
   mapcache_extent extent;
   apr_time_t mtime; /**< last modification time */
   int expires; /**< time in seconds after which the tile should be rechecked for validity */
+  char *style;
 };
 
 struct mapcache_feature_info {
