@@ -361,6 +361,8 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
                                mapcache_core_respond_to_error(ctx));
   }
 
+  ctx->log(ctx,MAPCACHE_ERROR,"HER request type %d", request->type);
+
   if(request->type == MAPCACHE_REQUEST_GET_CAPABILITIES) {
     mapcache_request_get_capabilities *req_caps = (mapcache_request_get_capabilities*)request;
     request_rec *original;
@@ -439,6 +441,9 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
   } else if( request->type == MAPCACHE_REQUEST_GET_FEATUREINFO) {
     mapcache_request_get_feature_info *req_fi = (mapcache_request_get_feature_info*)request;
     http_response = mapcache_core_get_featureinfo(ctx,req_fi);
+  } else if( request->type == MAPCACHE_REQUEST_GET_LEGENDGRAPHIC) {
+    mapcache_request_get_legend_graphic *req_lg = (mapcache_request_get_legend_graphic*)request;
+    http_response = mapcache_core_get_legendgraphic(ctx,req_lg);
   } else {
     ctx->set_error(ctx,500,"###BUG### unknown request type");
   }

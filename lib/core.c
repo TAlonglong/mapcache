@@ -604,6 +604,47 @@ mapcache_http_response *mapcache_core_get_featureinfo(mapcache_context *ctx,
   }
 }
 
+mapcache_http_response *mapcache_core_get_legendgraphic(mapcache_context *ctx,
+    mapcache_request_get_legend_graphic *req_lg)
+{
+  mapcache_legend_graphic *lg = req_lg->lg;
+  mapcache_tileset *tileset = lg->map.tileset;
+  if(!tileset->source) {
+    ctx->set_error(ctx,404,"cannot query tileset %s: no source defined",tileset->name);
+    return NULL;
+  }
+  if(tileset->source->legend_graphic_info_formats) {
+    int i;
+    mapcache_http_response *response;
+    ctx->log(ctx,MAPCACHE_ERROR,"HER mapcache_core_get_legendgraphic");
+    for(i=0; i<tileset->source->legend_graphic_info_formats->nelts; i++) {
+      ctx->log(ctx,MAPCACHE_ERROR,"HER loop %s %s ", lg->format, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,i,char*));
+      if(!strcmp(lg->format, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,i,char*))) {
+        break;
+      }
+    }
+    if(i == tileset->source->legend_graphic_info_formats->nelts) {
+      ctx->set_error(ctx,404, "unsupported legend graphic format %s",lg->format);
+      return NULL;
+    }
+    ctx->log(ctx,MAPCACHE_ERROR,"HER 2 mapcache_core_get_legendgraphic");
+    mapcache_legend_graphic_source_query_info(ctx, tileset->source, lg);
+    if(GC_HAS_ERROR(ctx)) return NULL;
+    ctx->log(ctx,MAPCACHE_ERROR,"HER 3 mapcache_core_get_legendgraphic");
+    response = mapcache_http_response_create(ctx->pool);
+    ctx->log(ctx,MAPCACHE_ERROR,"HER 4 mapcache_core_get_legendgraphic");
+    response->data = lg->data;
+    ctx->log(ctx,MAPCACHE_ERROR,"HER 5 mapcache_core_get_legendgraphic");
+    apr_table_set(response->headers,"Content-Type",lg->format);
+    ctx->log(ctx,MAPCACHE_ERROR,"HER 6 mapcache_core_get_legendgraphic");
+    return response;
+  } else {
+    ctx->set_error(ctx,404, "tileset %s does not support legend graphic requests",
+                   tileset->name);
+    return NULL;
+  }
+}
+
 mapcache_http_response* mapcache_core_get_capabilities(mapcache_context *ctx, mapcache_service *service,
     mapcache_request_get_capabilities *req_caps, char *url, char *path_info, mapcache_cfg *config)
 {

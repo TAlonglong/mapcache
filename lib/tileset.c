@@ -535,6 +535,8 @@ mapcache_tileset* mapcache_tileset_create(mapcache_context *ctx)
   tileset->store_dimension_assemblies = 1;
   tileset->dimension_assembly_type = MAPCACHE_DIMENSION_ASSEMBLY_NONE;
   tileset->subdimension_read_only = 0;
+  tileset->styles = apr_array_make(ctx->pool,3,sizeof(const char*));
+
   return tileset;
 }
 
@@ -560,6 +562,7 @@ mapcache_tileset* mapcache_tileset_clone(mapcache_context *ctx, mapcache_tileset
   dst->store_dimension_assemblies = src->store_dimension_assemblies;
   dst->dimension_assembly_type = src->dimension_assembly_type;
   dst->subdimension_read_only = src->subdimension_read_only;
+  dst->styles = src->styles;
   return dst;
 }
 
@@ -666,6 +669,35 @@ mapcache_feature_info* mapcache_tileset_feature_info_create(apr_pool_t *pool, ma
     }
   }
   return fi;
+}
+
+/*
+ * allocate and initialize a legend_graphic for a given tileset
+ */
+mapcache_legend_graphic* mapcache_tileset_legend_graphic_create(apr_pool_t *pool, mapcache_tileset *tileset)
+    //mapcache_grid_link *grid_link)
+{
+  mapcache_legend_graphic *lg = (mapcache_legend_graphic*)apr_pcalloc(pool, sizeof(mapcache_legend_graphic));
+  lg->map.tileset = tileset;
+  //ctx->log(ctx,MAPCACHE_ERROR,"HER alloc");
+  //fi->map.grid_link = grid_link;
+  if(tileset->dimensions) {
+    int i;
+    //ctx->log(ctx,MAPCACHE_ERROR,"HER dimmension");
+    lg->map.dimensions = apr_array_make(pool,tileset->dimensions->nelts,sizeof(mapcache_requested_dimension*));
+    for(i=0; i<tileset->dimensions->nelts; i++) {
+      mapcache_dimension *dimension = APR_ARRAY_IDX(tileset->dimensions,i,mapcache_dimension*);
+      mapcache_requested_dimension *rdim = apr_pcalloc(pool,sizeof(mapcache_requested_dimension));
+      //ctx->log(ctx,MAPCACHE_ERROR,"HER loop");
+      rdim->requested_value = dimension->default_value;
+      rdim->cached_value = NULL;
+      rdim->cached_entries_for_value = NULL;
+      rdim->dimension = dimension;
+      APR_ARRAY_PUSH(lg->map.dimensions,mapcache_requested_dimension*) = rdim;
+    }
+  }
+  //ctx->log(ctx,MAPCACHE_ERROR,"HER before return");
+  return lg;
 }
 
 void mapcache_tileset_assemble_out_of_zoom_tile(mapcache_context *ctx, mapcache_tile *tile) {

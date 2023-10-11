@@ -89,5 +89,34 @@ void mapcache_source_query_info(mapcache_context *ctx, mapcache_source *source, 
       break;
   }
 }
+
+void mapcache_legend_graphic_source_query_info(mapcache_context *ctx, mapcache_source *source, mapcache_legend_graphic *lg) {
+  int i;
+  ctx->log(ctx, MAPCACHE_ERROR, "calling query_info on source (%s): tileset=%s, ",
+           source->name, lg->map.tileset->name);
+#ifdef DEBUG
+  ctx->log(ctx, MAPCACHE_DEBUG, "calling query_info on source (%s): tileset=%s, grid=%s,",
+           source->name, fi->map.tileset->name, fi->map.grid_link->grid->name);
+#endif
+  for(i=0;i<=source->retry_count;i++) {
+    if(i) { /* not our first try */
+      ctx->log(ctx, MAPCACHE_ERROR, "source (%s) query_info retry %d of %d. previous try returned error: %s",
+               source->name, i, source->retry_count, ctx->get_error_message(ctx));
+      ctx->clear_errors(ctx);
+      if(source->retry_delay > 0) {
+        double wait = source->retry_delay;
+        int j = 0;
+        for(j=1;j<i;j++) /* sleep twice as long as before previous retry */
+          wait *= 2;
+        apr_sleep((int)(wait*1000000));  /* apr_sleep expects microseconds */
+      }
+    }
+    ctx->log(ctx, MAPCACHE_ERROR, "HER before legend graphic query info");
+    source->_legend_graphic_query_info(ctx, source, lg);
+    ctx->log(ctx, MAPCACHE_ERROR, "HER Atter legend graphic query info");
+    if(!GC_HAS_ERROR(ctx))
+      break;
+  }
+}
 /* vim: ts=2 sts=2 et sw=2
 */

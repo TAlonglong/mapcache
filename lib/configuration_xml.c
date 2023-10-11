@@ -1175,6 +1175,15 @@ void parseTileset(mapcache_context *ctx, ezxml_t node, mapcache_cfg *config)
     }
   }
 
+  if ((cur_node = ezxml_child(node,"style")) != NULL) {
+    for (cur_node = cur_node; cur_node; cur_node = cur_node->next) {
+      value = apr_pstrdup(ctx->pool,cur_node->txt);
+      APR_ARRAY_PUSH(tileset->styles,char*) = value;
+      ctx->log(ctx, MAPCACHE_ERROR, "PArsing style %s value: %s", cur_node->txt, value);
+    }
+    GC_CHECK_ERROR(ctx);
+  }
+
   mapcache_tileset_configuration_check(ctx,tileset);
   GC_CHECK_ERROR(ctx);
   mapcache_configuration_add_tileset(config,tileset,name);

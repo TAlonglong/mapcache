@@ -51,7 +51,7 @@ static int sort_strings(const void* pa, const void* pb)
 
 void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabilities *req, char *guessed_url, char *path_info, mapcache_cfg *cfg)
 {
-  ezxml_t caps, tmpxml;
+  ezxml_t caps, tmpxml, tmpxml_http;
   const char *title;
   const char *url;
   ezxml_t capxml;
@@ -166,6 +166,29 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
   ezxml_set_attr(tmpxml,"xmlns:xlink","http://www.w3.org/1999/xlink");
   ezxml_set_attr(tmpxml,"xlink:href",url);
 
+  tmpxml = ezxml_add_child(reqxml,"GetLegendGraphic",0);
+  ezxml_set_txt(ezxml_add_child(tmpxml,"Format",0),"image/png");
+  ezxml_set_txt(ezxml_add_child(tmpxml,"Format",0),"image/gif");
+  tmpxml = ezxml_add_child(tmpxml,"DCPType",0);
+  tmpxml = ezxml_add_child(tmpxml,"HTTP",0);
+  tmpxml = ezxml_add_child(tmpxml,"Get",0);
+  tmpxml = ezxml_add_child(tmpxml,"OnlineResource",0);
+  ezxml_set_attr(tmpxml,"xmlns:xlink","http://www.w3.org/1999/xlink");
+  ezxml_set_attr(tmpxml,"xlink:href",url);
+
+  tmpxml = ezxml_add_child(reqxml,"GetStyles",0);
+  ezxml_set_txt(ezxml_add_child(tmpxml,"Format",0),"image/png");
+  ezxml_set_txt(ezxml_add_child(tmpxml,"Format",0),"image/gif");
+  tmpxml = ezxml_add_child(tmpxml,"DCPType",0);
+  tmpxml_http = ezxml_add_child(tmpxml,"HTTP",0);
+  tmpxml = ezxml_add_child(tmpxml_http,"Get",0);
+  tmpxml = ezxml_add_child(tmpxml,"OnlineResource",0);
+  ezxml_set_attr(tmpxml,"xmlns:xlink","http://www.w3.org/1999/xlink");
+  ezxml_set_attr(tmpxml,"xlink:href",url);
+  tmpxml = ezxml_add_child(tmpxml_http,"Post",0);
+  tmpxml = ezxml_add_child(tmpxml,"OnlineResource",0);
+  ezxml_set_attr(tmpxml,"xmlns:xlink","http://www.w3.org/1999/xlink");
+  ezxml_set_attr(tmpxml,"xlink:href",url);
   /*
               "<Exception>\n"
                 "<Format>text/plain</Format>\n"
@@ -261,6 +284,8 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     const char *title;
     const char *abstract;
     const char *keywords;
+    const char *styles;
+    char *stylename = NULL;
     int i;
     apr_hash_this(tileindex_index,&key,&keylen,(void**)&tileset);
 
@@ -271,6 +296,8 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
 
     layerxml = ezxml_add_child(toplayer,"Layer",0);
     ezxml_set_attr(layerxml, "cascaded", "1");
+    ctx->log(ctx,MAPCACHE_ERROR,"HER queryable %s %d %d", tileset->name, tileset->source, tileset->source->info_formats);
+
     ezxml_set_attr(layerxml, "queryable", (tileset->source && tileset->source->info_formats)?"1":"0");
 
     ezxml_set_txt(ezxml_add_child(layerxml,"Name",0),tileset->name);
@@ -395,10 +422,34 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     } else {
       ezxml_set_txt(ezxml_add_child(tsxml,"Format",0),"image/unknown");
     }
+    ctx->log(ctx,MAPCACHE_ERROR,"Force set LAYERS ezxml_add_child %s", tileset->name);
     ezxml_set_txt(ezxml_add_child(tsxml,"Layers",0),tileset->name);
-    ezxml_set_txt(ezxml_add_child(tsxml,"Styles",0),"");
+    /*optional vendor specific tileset styles*/
+    for(i=0; i<tileset->styles->nelts; i++) {
+      char *style = APR_ARRAY_IDX(tileset->styles,i,char*);
+      if(stylename) {
+        stylename = apr_pstrcat(ctx->pool,stylename,",",style,NULL);
+      } else {
+        stylename = apr_pstrdup(ctx->pool,style);
+      }
+    }
+    if(stylename) {
+      ezxml_set_txt(ezxml_add_child(tsxml,"Styles",0),stylename);
+    }else{
+      ezxml_set_txt(ezxml_add_child(tsxml,"Styles",0),"");
+    }
+
+    /*optional layer styles*/
+    for(i=0; i<tileset->styles->nelts; i++) {
+      char *style = APR_ARRAY_IDX(tileset->styles,i,char*);
+      ctx->log(ctx,MAPCACHE_ERROR,"New style %s", style);
+      tmpxml = ezxml_add_child(layerxml,"Style",0);
+      ezxml_set_txt(ezxml_add_child(tmpxml,"Name",0),style);
+      ezxml_set_txt(ezxml_add_child(tmpxml,"Title",0),style);
+    }
     tileindex_index = apr_hash_next(tileindex_index);
   }
+
 
 
   tmpcaps = ezxml_toxml(caps);
@@ -447,7 +498,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
   int width=0, height=0;
   double *tmpbbox;
   mapcache_extent extent;
-  int isGetMap=0,iswms130=0;
+  int isGetMap=0,iswms130=0,isGetLegendGraphic=0;
   int errcode = 200;
   char *errmsg = NULL;
   mapcache_service_wms *wms_service = (mapcache_service_wms*)this;
@@ -491,6 +542,9 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       goto proxies; /* OK */
     } else if( ! strcasecmp(str,"getfeatureinfo") ) {
       //nothing
+    } else if( ! strcasecmp(str,"getlegendgraphic") ) {
+      ctx->log(ctx,MAPCACHE_ERROR,"Is Get legende graphic");
+      isGetLegendGraphic = 1;
     } else {
       errcode = 501;
       errmsg = apr_psprintf(ctx->pool,"received wms with invalid request %s",str);
@@ -498,87 +552,90 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
     }
   }
 
-
-  str = apr_table_get(params,"BBOX");
-  if(!str) {
-    errcode = 400;
-    errmsg = "received wms request with no bbox";
-    goto proxies;
+  if ( isGetLegendGraphic ) {
+    // Dont' neet BBOX, HEIGHT, WIDTH or CRS
   } else {
-    int nextents;
-    if(MAPCACHE_SUCCESS != mapcache_util_extract_double_list(ctx, str,",",&tmpbbox,&nextents) ||
-        nextents != 4) {
+    str = apr_table_get(params,"BBOX");
+    if(!str) {
       errcode = 400;
-      errmsg = "received wms request with invalid bbox";
+      errmsg = "received wms request with no bbox";
       goto proxies;
+    } else {
+      int nextents;
+      if(MAPCACHE_SUCCESS != mapcache_util_extract_double_list(ctx, str,",",&tmpbbox,&nextents) ||
+          nextents != 4) {
+        errcode = 400;
+        errmsg = "received wms request with invalid bbox";
+        goto proxies;
+      }
+      extent.minx = tmpbbox[0];
+      extent.miny = tmpbbox[1];
+      extent.maxx = tmpbbox[2];
+      extent.maxy = tmpbbox[3];
     }
-    extent.minx = tmpbbox[0];
-    extent.miny = tmpbbox[1];
-    extent.maxx = tmpbbox[2];
-    extent.maxy = tmpbbox[3];
-  }
 
-  str = apr_table_get(params,"WIDTH");
-  if(!str) {
-    errcode = 400;
-    errmsg = "received wms request with no width";
-    goto proxies;
-  } else {
-    char *endptr;
-    width = (int)strtol(str,&endptr,10);
-    if(*endptr != 0 || width <= 0) {
+    str = apr_table_get(params,"WIDTH");
+    if(!str) {
       errcode = 400;
-      errmsg = "received wms request with invalid width";
+      errmsg = "received wms request with no width";
       goto proxies;
+    } else {
+      char *endptr;
+      width = (int)strtol(str,&endptr,10);
+      if(*endptr != 0 || width <= 0) {
+        errcode = 400;
+        errmsg = "received wms request with invalid width";
+        goto proxies;
+      }
     }
-  }
 
-  str = apr_table_get(params,"HEIGHT");
-  if(!str) {
-    errcode = 400;
-    errmsg = "received wms request with no height";
-    goto proxies;
-  } else {
-    char *endptr;
-    height = (int)strtol(str,&endptr,10);
-    if(*endptr != 0 || height <= 0) {
+    str = apr_table_get(params,"HEIGHT");
+    if(!str) {
       errcode = 400;
-      errmsg = "received wms request with invalid height";
+      errmsg = "received wms request with no height";
       goto proxies;
+    } else {
+      char *endptr;
+      height = (int)strtol(str,&endptr,10);
+      if(*endptr != 0 || height <= 0) {
+        errcode = 400;
+        errmsg = "received wms request with invalid height";
+        goto proxies;
+      }
     }
-  }
 
-  if(width > wms_service->maxsize || height > wms_service->maxsize) {
-    errcode=400;
-    errmsg = "received wms request with width or height over configured maxsize limit";
-    goto proxies;
-  }
+    if(width > wms_service->maxsize || height > wms_service->maxsize) {
+      errcode=400;
+      errmsg = "received wms request with width or height over configured maxsize limit";
+      goto proxies;
+    }
 
-  if(iswms130) {
-    srs = apr_table_get(params,"CRS");
-    if(!srs) {
-      errcode = 400;
-      errmsg = "received wms request with no crs";
-      goto proxies;
+    if(iswms130) {
+      srs = apr_table_get(params,"CRS");
+      if(!srs) {
+        errcode = 400;
+        errmsg = "received wms request with no crs";
+        goto proxies;
+      }
+    } else {
+      srs = apr_table_get(params,"SRS");
+      if(!srs) {
+        errcode = 400;
+        errmsg = "received wms request with no srs";
+        goto proxies;
+      }
     }
-  } else {
-    srs = apr_table_get(params,"SRS");
-    if(!srs) {
-      errcode = 400;
-      errmsg = "received wms request with no srs";
-      goto proxies;
-    }
-  }
-  if(iswms130) {
-    /*check if we should flip the axis order*/
-    if(mapcache_is_axis_inverted(srs)) {
-      double swap;
-      swap = extent.minx;
-      extent.minx = extent.miny;
-      extent.miny = swap;
-      swap = extent.maxx;
-      extent.maxx = extent.maxy;
-      extent.maxy = swap;
+    if(iswms130) {
+      /*check if we should flip the axis order*/
+      if(mapcache_is_axis_inverted(srs)) {
+        double swap;
+        swap = extent.minx;
+        extent.minx = extent.miny;
+        extent.miny = swap;
+        swap = extent.maxx;
+        extent.maxx = extent.maxy;
+        extent.maxy = swap;
+      }
     }
   }
 
@@ -803,6 +860,75 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
         goto proxies;
       }
     }
+  } else if (isGetLegendGraphic) {
+    mapcache_legend_graphic *lg;
+    mapcache_request_get_legend_graphic *req_lg;
+    str = apr_table_get(params,"QUERY_LAYERS");
+    if(!str) {
+      errcode = 400;
+      errmsg = "received wms getlegendgraphic request with no query layers";
+      goto proxies;
+    } else if(strstr(str,",")) {
+      errcode = 501;
+      errmsg = "wms getlegendgraphic not implemented for multiple layers";
+      goto proxies;
+    } else {
+      mapcache_tileset *tileset = mapcache_configuration_get_tileset(config,str);
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl query_layers %s", str);
+      if(!tileset || mapcache_imageio_is_raw_tileset(tileset)) {
+        errcode = 404;
+        errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request with invalid layer %s", str);
+        goto proxies;
+      }
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl AFTER query_layers %p|", tileset);
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl %s %s", tileset->name, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,0,char*));
+      if(!tileset->source || !tileset->source->legend_graphic_info_formats) {
+        errcode = 404;
+        errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request for unqueryable layer %s %s", str, tileset->source->legend_graphic_info_formats);
+        goto proxies;
+      }
+      ctx->log(ctx,MAPCACHE_ERROR,"HER after source");
+      lg = mapcache_tileset_legend_graphic_create(ctx->pool, tileset);
+      ctx->log(ctx,MAPCACHE_ERROR,"HER after mapcache_tileset_legend_graphic_create");
+      lg->format = apr_pstrdup(ctx->pool,apr_table_get(params,"INFO_FORMAT"));
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl info_formats %s", lg->format);
+      if(!lg->format) {
+        errcode = 400;
+        errmsg = "received wms getlegendgraphic request with no INFO_FORMAT";
+        goto proxies;
+      }
+      if(lg->map.dimensions) {
+        int i;
+        ctx->log(ctx,MAPCACHE_ERROR,"HER gl DIMENSION %s", lg->format);
+        for(i=0; i<tileset->dimensions->nelts; i++) {
+          mapcache_dimension *dimension = APR_ARRAY_IDX(tileset->dimensions,i,mapcache_dimension*);
+          const char *value;
+          ctx->log(ctx,MAPCACHE_ERROR,"HER gl loop dimension %s", lg->format);
+          ctx->log(ctx,MAPCACHE_ERROR,"HER gl loop dimension %s", dimension->name);
+          if((value = (char*)apr_table_get(params,dimension->name)) != NULL) {
+            mapcache_map_set_requested_dimension(ctx,&lg->map,dimension->name,value);
+            GC_CHECK_ERROR(ctx);
+          }
+        }
+      }
+      ctx->log(ctx,MAPCACHE_ERROR,"Is Get legende graphic STYLE %s", apr_table_get(params,"STYLE"));
+      str = apr_table_get(params,"STYLE");
+      if(!str) {
+        errcode = 400;
+        errmsg = "received wms request GetLegendGraphic with no style";
+        goto proxies;
+      } else {
+          lg->style = str;
+      }
+      req_lg = apr_pcalloc(ctx->pool, sizeof(mapcache_request_get_legend_graphic));
+      ctx->log(ctx,MAPCACHE_ERROR,"HER palloc");
+      req_lg->request.type = MAPCACHE_REQUEST_GET_LEGENDGRAPHIC;
+      ctx->log(ctx,MAPCACHE_ERROR,"HER type");
+      req_lg->lg = lg;
+      ctx->log(ctx,MAPCACHE_ERROR,"HER assign");
+      *request = (mapcache_request*)req_lg;
+      ctx->log(ctx,MAPCACHE_ERROR,"HER assign req_lq");
+    }
   } else {
     int i;
     int x,y;
@@ -880,6 +1006,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       fi->i = x;
       fi->j = y;
       fi->format = apr_pstrdup(ctx->pool,apr_table_get(params,"INFO_FORMAT"));
+      ctx->log(ctx,MAPCACHE_ERROR,"HER format %s", fi->format);
       if(!fi->format) {
         errcode = 400;
         errmsg = "received wms getfeatureinfo request with no INFO_FORMAT";
@@ -907,6 +1034,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
 
     }
   }
+  ctx->log(ctx,MAPCACHE_ERROR,"Before proxies %d %c", errcode, request);
 
 proxies:
   /*
@@ -917,7 +1045,7 @@ proxies:
       *request && (
         /* if its a single tile we're ok*/
         ((*request)->type == MAPCACHE_REQUEST_GET_TILE && ((mapcache_request_get_tile*)(*request))->ntiles == 1) ||
-        ((*request)->type == MAPCACHE_REQUEST_GET_FEATUREINFO) ||
+        ((*request)->type == MAPCACHE_REQUEST_GET_FEATUREINFO || (*request)->type == MAPCACHE_REQUEST_GET_LEGENDGRAPHIC) ||
 
         /* if we have a getmap or multiple tiles, we must check that assembling is allowed */
         (((*request)->type == MAPCACHE_REQUEST_GET_MAP || (
@@ -925,10 +1053,12 @@ proxies:
          wms_service->getmap_strategy == MAPCACHE_GETMAP_ASSEMBLE)
       )) {
     /* if we're here, then we have succesfully parsed the request and can treat it ourselves, i.e. from cached tiles */
+    ctx->log(ctx,MAPCACHE_ERROR,"200 and request");
     return;
   } else {
     /* look to see if we can proxy the request somewhere*/
     int i,j;
+    ctx->log(ctx,MAPCACHE_ERROR,"Proxies");
     for(i=0; i<wms_service->forwarding_rules->nelts; i++) {
       mapcache_forwarding_rule *rule = APR_ARRAY_IDX(wms_service->forwarding_rules,i,mapcache_forwarding_rule*);
       int got_a_match = 1;
