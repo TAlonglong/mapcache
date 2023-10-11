@@ -88,6 +88,8 @@ typedef struct mapcache_tile mapcache_tile;
 typedef struct mapcache_metatile mapcache_metatile;
 typedef struct mapcache_feature_info mapcache_feature_info;
 typedef struct mapcache_request_get_feature_info mapcache_request_get_feature_info;
+typedef struct mapcache_legend_graphic mapcache_legend_graphic;
+typedef struct mapcache_request_get_legend_graphic mapcache_request_get_legend_graphic;
 typedef struct mapcache_map mapcache_map;
 typedef struct mapcache_http_response mapcache_http_response;
 typedef struct mapcache_http mapcache_http;
@@ -290,6 +292,7 @@ struct mapcache_source {
   double retry_delay;
 
   apr_array_header_t *info_formats;
+  apr_array_header_t *legend_graphic_info_formats;
   /**
    * \brief get the data for the metatile
    *
@@ -298,6 +301,7 @@ struct mapcache_source {
   void (*_render_map)(mapcache_context *ctx, mapcache_source *psource, mapcache_map *map);
 
   void (*_query_info)(mapcache_context *ctx, mapcache_source *psource, mapcache_feature_info *fi);
+  void (*_legend_graphic_query_info)(mapcache_context *ctx, mapcache_source *psource, mapcache_legend_graphic *lg);
 
   void (*configuration_parse_xml)(mapcache_context *ctx, ezxml_t xml, mapcache_source * source, mapcache_cfg *config);
   void (*configuration_check)(mapcache_context *ctx, mapcache_cfg *cfg, mapcache_source * source);
@@ -440,6 +444,7 @@ typedef enum {
   MAPCACHE_REQUEST_GET_MAP,
   MAPCACHE_REQUEST_GET_CAPABILITIES,
   MAPCACHE_REQUEST_GET_FEATUREINFO,
+  MAPCACHE_REQUEST_GET_LEGENDGRAPHIC,
   MAPCACHE_REQUEST_PROXY
 } mapcache_request_type;
 
@@ -513,9 +518,21 @@ struct mapcache_feature_info {
   mapcache_buffer *data;
 };
 
+struct mapcache_legend_graphic {
+  mapcache_map map;
+  char *format;
+  char *style;
+  mapcache_buffer *data;
+};
+
 struct mapcache_request_get_feature_info {
   mapcache_request request;
   mapcache_feature_info *fi;
+};
+
+struct mapcache_request_get_legend_graphic {
+  mapcache_request request;
+  mapcache_legend_graphic *lg;
 };
 
 struct mapcache_request_get_map {
@@ -949,6 +966,8 @@ void mapcache_source_init(mapcache_context *ctx, mapcache_source *source);
 void mapcache_source_render_map(mapcache_context *ctx, mapcache_source *source, mapcache_map *map);
 void mapcache_source_query_info(mapcache_context *ctx, mapcache_source *source,
     mapcache_feature_info *fi);
+void mapcache_legend_graphic_source_query_info(mapcache_context *ctx, mapcache_source *source,
+    mapcache_legend_graphic *lg);
 
 /**
  * \memberof mapcache_source_gdal
@@ -1217,6 +1236,8 @@ struct mapcache_tileset {
    */
   mapcache_image_format *format;
 
+  apr_array_header_t *styles;
+
   /**
    * a list of parameters that can be forwarded from the client to the mapcache_tileset::source
    */
@@ -1335,6 +1356,8 @@ mapcache_map* mapcache_tileset_map_clone(apr_pool_t *pool, mapcache_map *src);
 mapcache_feature_info* mapcache_tileset_feature_info_create(apr_pool_t *pool, mapcache_tileset *tileset,
     mapcache_grid_link *grid_link);
 
+mapcache_legend_graphic* mapcache_tileset_legend_graphic_create(apr_pool_t *pool, mapcache_tileset *tileset);
+
 /**
  * \brief create and initalize a tileset
  * @param pool
@@ -1364,6 +1387,8 @@ MS_DLL_EXPORT mapcache_http_response* mapcache_core_get_tile(mapcache_context *c
 MS_DLL_EXPORT mapcache_http_response* mapcache_core_get_map(mapcache_context *ctx, mapcache_request_get_map *req_map);
 
 MS_DLL_EXPORT mapcache_http_response* mapcache_core_get_featureinfo(mapcache_context *ctx, mapcache_request_get_feature_info *req_fi);
+
+MS_DLL_EXPORT mapcache_http_response* mapcache_core_get_legendgraphic(mapcache_context *ctx, mapcache_request_get_legend_graphic *req_lg);
 
 MS_DLL_EXPORT mapcache_http_response* mapcache_core_proxy_request(mapcache_context *ctx, mapcache_request_proxy *req_proxy);
 MS_DLL_EXPORT mapcache_http_response* mapcache_core_respond_to_error(mapcache_context *ctx);

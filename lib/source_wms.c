@@ -44,6 +44,7 @@ struct mapcache_source_wms {
   apr_table_t *wms_default_params; /**< default WMS parameters (SERVICE,REQUEST,STYLES,VERSION) */
   apr_table_t *getmap_params; /**< WMS parameters specified in configuration */
   apr_table_t *getfeatureinfo_params; /**< WMS parameters specified in configuration */
+  apr_table_t *getlegendgraphic_params; /**< WMS parameters specified in configuration */
   mapcache_http *http;
 };
 
@@ -83,7 +84,9 @@ void _mapcache_source_wms_render_map(mapcache_context *ctx, mapcache_source *pso
    * as the LAYERS to request. When using mirror-mode, the source has no layers
    * defined, it is added based on the incoming request
    */
+    ctx->log(ctx,MAPCACHE_ERROR,"BEFORE Force set LAYERS %s", map->tileset->name);
   if(!apr_table_get(params,"layers")) {
+    ctx->log(ctx,MAPCACHE_ERROR,"Force set LAYERS %s", map->tileset->name);
     apr_table_set(params,"LAYERS",map->tileset->name);
   }
 
@@ -141,6 +144,55 @@ void _mapcache_source_wms_query(mapcache_context *ctx, mapcache_source *source, 
 
 }
 
+void _mapcache_source_wms_query_legend_graphic(mapcache_context *ctx, mapcache_source *source, mapcache_legend_graphic *lg)
+{
+  mapcache_map *map = (mapcache_map*)lg;
+  mapcache_http *http;
+  mapcache_source_wms *wms = (mapcache_source_wms*)source;
+
+  apr_table_t *params = apr_table_clone(ctx->pool,wms->wms_default_params);
+  apr_table_overlap(params,wms->getmap_params,0);
+  if (apr_table_get(params,"LAYERS")){
+    ctx->log(ctx,MAPCACHE_ERROR,"HER replace layers with layer");
+    /*Looks like mapserver needs LAYER, not LAYERS for GetLegendGraphic*/
+    apr_table_setn(params,"LAYER", apr_table_get(params,"LAYERS"));
+    apr_table_unset(params, "LAYERS");
+  }
+  if (apr_table_get(params,"STYLES")){
+    apr_table_unset(params, "STYLES");
+  }
+  //else{
+  //   ctx->log(ctx,MAPCACHE_ERROR,"HER NO STYLES %s", apr_table_get(params,"STYLE"));
+  apr_table_setn(params,"STYLE",lg->style);
+  // }
+  apr_table_setn(params,"REQUEST","GetLegendGraphic");
+  ctx->log(ctx,MAPCACHE_ERROR,"HER format lg %s", lg->format);
+  apr_table_setn(params,"FORMAT",lg->format);
+  //apr_table_setn(params,"STYLE","DIANA");
+
+  apr_table_overlap(params,wms->getlegendgraphic_params,0);
+
+  if(map->dimensions && map->dimensions->nelts>0) {
+    int i;
+    for(i=0; i<map->dimensions->nelts; i++) {
+      mapcache_requested_dimension *rdim = APR_ARRAY_IDX(map->dimensions,i,mapcache_requested_dimension*);
+      /* set both DIM_key=val and key=val KVP params */
+      apr_table_setn(params,rdim->dimension->name,rdim->requested_value);
+      if(strcasecmp(rdim->dimension->name,"TIME") && strcasecmp(rdim->dimension->name,"ELEVATION")) {
+        char *dim_name = apr_pstrcat(ctx->pool,"DIM_",rdim->dimension->name,NULL);
+        apr_table_setn(params,dim_name,rdim->requested_value);
+      }
+    }
+  }
+
+  lg->data = mapcache_buffer_create(30000,ctx->pool);
+  http = mapcache_http_clone(ctx, wms->http);
+  http->url = mapcache_http_build_url(ctx,http->url,params);
+  mapcache_http_do_request(ctx,http,lg->data,NULL,NULL);
+  GC_CHECK_ERROR(ctx);
+
+}
+
 /**
  * \private \memberof mapcache_source_wms
  * \sa mapcache_source::configuration_parse()
@@ -150,6 +202,7 @@ void _mapcache_source_wms_configuration_parse_xml(mapcache_context *ctx, ezxml_t
   ezxml_t cur_node;
   mapcache_source_wms *src = (mapcache_source_wms*)source;
 
+  ctx->log(ctx,MAPCACHE_ERROR,"HER parse xml");
 
   if ((cur_node = ezxml_child(node,"getmap")) != NULL) {
     ezxml_t gm_node;
@@ -172,10 +225,11 @@ void _mapcache_source_wms_configuration_parse_xml(mapcache_context *ctx, ezxml_t
       char *iformats;
       source->info_formats = apr_array_make(ctx->pool,3,sizeof(char*));
       iformats = apr_pstrdup(ctx->pool,fi_node->txt);
-
+      ctx->log(ctx,MAPCACHE_ERROR,"HER info_format getfeatureinfo %s",source->info_formats);
       for (key = apr_strtok(iformats, "," , &last); key != NULL;
            key = apr_strtok(NULL, ",", &last)) {
         APR_ARRAY_PUSH(source->info_formats,char*) = key;
+        ctx->log(ctx,MAPCACHE_ERROR,"HER info_format getfeatureinfo %s", key);
       }
     } else {
       ctx->set_error(ctx,400,"wms source %s <getfeatureinfo> has no <info_formats> tag",source->name);
@@ -189,6 +243,40 @@ void _mapcache_source_wms_configuration_parse_xml(mapcache_context *ctx, ezxml_t
       ctx->set_error(ctx,400,"wms source %s <getfeatureinfo> has no <params> block (should contain at least <QUERY_LAYERS> child)",source->name);
       return;
     }
+  }
+  ctx->log(ctx,MAPCACHE_ERROR,"HER source getlegendgraphic");
+  if ((cur_node = ezxml_child(node,"getlegendgraphic")) != NULL) {
+    ezxml_t lg_node;
+    ctx->log(ctx,MAPCACHE_ERROR,"HER source getlegendgraphic");
+    if ((lg_node = ezxml_child(cur_node,"info_formats")) != NULL) {
+      char *key,*last;
+      char *iformats;
+      ctx->log(ctx,MAPCACHE_ERROR,"HER info_formats");
+      source->legend_graphic_info_formats = apr_array_make(ctx->pool,3,sizeof(char*));
+      iformats = apr_pstrdup(ctx->pool,lg_node->txt);
+
+      for (key = apr_strtok(iformats, "," , &last); key != NULL;
+           key = apr_strtok(NULL, ",", &last)) {
+        APR_ARRAY_PUSH(source->legend_graphic_info_formats,char*) = key;
+        ctx->log(ctx,MAPCACHE_ERROR,"HER lg loop %s", key);
+      }
+    } else {
+      ctx->set_error(ctx,400,"wms source %s <getlegendgraphic> has no <info_formats> tag",source->name);
+      return;
+    }
+    if ((lg_node = ezxml_child(cur_node,"params")) != NULL) {
+      for(lg_node = lg_node->child; lg_node; lg_node = lg_node->sibling) {
+        apr_table_set(src->getlegendgraphic_params, lg_node->name, lg_node->txt);
+        ctx->log(ctx,MAPCACHE_ERROR,"HER loop params %s %s %s", lg_node->name, lg_node->txt, source->name);
+      }
+    } else {
+      ctx->set_error(ctx,400,"wms source %s <getlegendgraphic> has no <params> block (should contain at least <QUERY_LAYERS> child)",source->name);
+      return;
+    }
+  }
+  else
+  {
+    ctx->log(ctx,MAPCACHE_ERROR,"HER NO ezxml child getlegendgraphic");
   }
   if ((cur_node = ezxml_child(node,"http")) != NULL) {
     src->http = mapcache_http_configuration_parse_xml(ctx,cur_node);
@@ -217,6 +305,11 @@ void _mapcache_source_wms_configuration_check(mapcache_context *ctx, mapcache_cf
       ctx->set_error(ctx, 400, "wms source %s has no QUERY_LAYERS", source->name);
     }
   }
+  if(source->legend_graphic_info_formats) {
+    if(!apr_table_get(src->getlegendgraphic_params,"QUERY_LAYERS")) {
+      ctx->set_error(ctx, 400, "wms source %s GetLegendgraphic has no QUERY_LAYERS", source->name);
+    }
+  }
 }
 
 mapcache_source* mapcache_source_wms_create(mapcache_context *ctx)
@@ -230,11 +323,14 @@ mapcache_source* mapcache_source_wms_create(mapcache_context *ctx)
   source->source.type = MAPCACHE_SOURCE_WMS;
   source->source._render_map = _mapcache_source_wms_render_map;
   source->source.configuration_check = _mapcache_source_wms_configuration_check;
+  ctx->log(ctx,MAPCACHE_ERROR,"HER source config parse");
   source->source.configuration_parse_xml = _mapcache_source_wms_configuration_parse_xml;
   source->source._query_info = _mapcache_source_wms_query;
+  source->source._legend_graphic_query_info = _mapcache_source_wms_query_legend_graphic;
   source->wms_default_params = apr_table_make(ctx->pool,4);;
   source->getmap_params = apr_table_make(ctx->pool,4);
   source->getfeatureinfo_params = apr_table_make(ctx->pool,4);
+  source->getlegendgraphic_params = apr_table_make(ctx->pool,4);
   apr_table_add(source->wms_default_params,"VERSION","1.1.1");
   apr_table_add(source->wms_default_params,"REQUEST","GetMap");
   apr_table_add(source->wms_default_params,"SERVICE","WMS");
