@@ -893,10 +893,10 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
   } else if (isGetLegendGraphic) {
     mapcache_legend_graphic *lg;
     mapcache_request_get_legend_graphic *req_lg;
-    str = apr_table_get(params,"QUERY_LAYERS");
+    str = apr_table_get(params,"LAYER");
     if(!str) {
       errcode = 400;
-      errmsg = "received wms getlegendgraphic request with no query layers";
+      errmsg = "received wms getlegendgraphic request with no layer";
       goto proxies;
     } else if(strstr(str,",")) {
       errcode = 501;
@@ -904,13 +904,13 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       goto proxies;
     } else {
       mapcache_tileset *tileset = mapcache_configuration_get_tileset(config,str);
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl query_layers %s", str);
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl layer %s", str);
       if(!tileset || mapcache_imageio_is_raw_tileset(tileset)) {
         errcode = 404;
         errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request with invalid layer %s", str);
         goto proxies;
       }
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl AFTER query_layers %p|", tileset);
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl AFTER layers %p|", tileset);
       ctx->log(ctx,MAPCACHE_ERROR,"HER gl %s %s", tileset->name, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,0,char*));
       if(!tileset->source || !tileset->source->legend_graphic_info_formats) {
         errcode = 404;
@@ -920,11 +920,11 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       ctx->log(ctx,MAPCACHE_ERROR,"HER after source");
       lg = mapcache_tileset_legend_graphic_create(ctx->pool, tileset);
       ctx->log(ctx,MAPCACHE_ERROR,"HER after mapcache_tileset_legend_graphic_create");
-      lg->format = apr_pstrdup(ctx->pool,apr_table_get(params,"INFO_FORMAT"));
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl info_formats %s", lg->format);
+      lg->format = apr_pstrdup(ctx->pool,apr_table_get(params,"FORMAT"));
+      ctx->log(ctx,MAPCACHE_ERROR,"HER gl formats %s", lg->format);
       if(!lg->format) {
         errcode = 400;
-        errmsg = "received wms getlegendgraphic request with no INFO_FORMAT";
+        errmsg = "received wms getlegendgraphic request with no FORMAT";
         goto proxies;
       }
       if(lg->map.dimensions) {

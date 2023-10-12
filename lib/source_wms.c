@@ -307,11 +307,11 @@ void _mapcache_source_wms_configuration_check(mapcache_context *ctx, mapcache_cf
       ctx->set_error(ctx, 400, "wms source %s has no QUERY_LAYERS", source->name);
     }
   }
-  if(source->legend_graphic_info_formats) {
-    if(!apr_table_get(src->getlegendgraphic_params,"QUERY_LAYERS")) {
-      ctx->set_error(ctx, 400, "wms source %s GetLegendgraphic has no QUERY_LAYERS", source->name);
-    }
-  }
+  // if(source->legend_graphic_info_formats) {
+  //   if(!apr_table_get(src->getlegendgraphic_params,"QUERY_LAYERS")) {
+  //     ctx->set_error(ctx, 400, "wms source %s GetLegendgraphic has no QUERY_LAYERS", source->name);
+  //   }
+  // }
 }
 
 mapcache_source* mapcache_source_wms_create(mapcache_context *ctx)
