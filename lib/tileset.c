@@ -619,6 +619,7 @@ mapcache_map* mapcache_tileset_map_clone(apr_pool_t *pool, mapcache_map *src)
   map->height = src->height;
   map->width = src->width;
   map->extent = src->extent;
+  map->style = src->style;
   return map;
 }
 
@@ -643,6 +644,7 @@ mapcache_map* mapcache_tileset_map_create(apr_pool_t *pool, mapcache_tileset *ti
       APR_ARRAY_PUSH(map->dimensions,mapcache_requested_dimension*) = rdim;
     }
   }
+  map->style = apr_array_make(pool,3,sizeof(const char*));
   return map;
 }
 
