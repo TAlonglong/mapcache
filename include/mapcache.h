@@ -1053,6 +1053,8 @@ struct mapcache_tile {
    * compositing image data
    */
   int nodata;
+
+  char *style;
 };
 
 /**
@@ -1276,7 +1278,8 @@ void mapcache_tileset_get_map_tiles(mapcache_context *ctx, mapcache_tileset *til
                                     int *ntiles,
                                     mapcache_tile ***tiles,
                                     mapcache_grid_link **effectively_used_grid_link,
-                                    apr_array_header_t *dimensions);
+                                    apr_array_header_t *dimensions,
+                                    char * style);
 
 mapcache_image* mapcache_tileset_assemble_map_tiles(mapcache_context *ctx, mapcache_tileset *tileset,
     mapcache_grid_link *grid_link,
