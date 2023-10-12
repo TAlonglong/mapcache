@@ -59,6 +59,7 @@ void mapcache_source_render_map(mapcache_context *ctx, mapcache_source *source, 
         apr_sleep((int)(wait*1000000));  /* apr_sleep expects microseconds */
       }
     }
+    ctx->log(ctx,MAPCACHE_ERROR,"---------INSIDE mapcache_source_render_map %s", map->style);
     source->_render_map(ctx, source, map);
     if(!GC_HAS_ERROR(ctx))
       break;

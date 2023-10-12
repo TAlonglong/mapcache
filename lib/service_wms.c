@@ -827,6 +827,11 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           tile->x = x;
           tile->y = y;
           tile->z = z;
+          str = apr_table_get(params,"STYLES");
+          if(str) {
+            ctx->log(ctx,MAPCACHE_ERROR, "setting map styleS %s", str);
+            tile->style = str;
+          }
           mapcache_tileset_tile_validate(ctx,tile);
           if(GC_HAS_ERROR(ctx)) {
             /* don't bail out just yet, in case multiple tiles have been requested */
@@ -841,10 +846,11 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           map->width = width;
           map->height = height;
           map->extent = extent;
-          str = apr_table_get(params,"STYLE");
+          str = apr_table_get(params,"STYLES");
           if(str) {
             ctx->log(ctx,MAPCACHE_ERROR, "setting map style %s", str);
             map->style = str;
+            ctx->log(ctx,MAPCACHE_ERROR, "AFTER setting map style %s", map->style);
           }
           map_req->maps[map_req->nmaps++] = map;
           dimtable = map->dimensions;
