@@ -487,6 +487,7 @@ mapcache_metatile* mapcache_tileset_metatile_get(mapcache_context *ctx, mapcache
 
   ctx->log(ctx,MAPCACHE_ERROR,"Setting style? %s", mt->map.style);
   mt->map.style = tile->style;
+  mt->tiles->style = tile->style;
   ctx->log(ctx,MAPCACHE_ERROR,"Setting style? %s", mt->map.style);
   for(i=0; i<mt->metasize_x; i++) {
     for(j=0; j<mt->metasize_y; j++) {
@@ -525,6 +526,7 @@ void mapcache_tileset_render_metatile(mapcache_context *ctx, mapcache_metatile *
   GC_CHECK_ERROR(ctx);
   mapcache_image_metatile_split(ctx, mt);
   GC_CHECK_ERROR(ctx);
+  ctx->log(ctx,MAPCACHE_ERROR,"---------BEFORE mapcache_cache_tile_multi_set %s %s", mt->tiles->style, mt->map.style);
   mapcache_cache_tile_multi_set(ctx, tileset->_cache, mt->tiles, mt->ntiles);
 }
 
