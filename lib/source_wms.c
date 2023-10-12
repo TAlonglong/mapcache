@@ -64,7 +64,7 @@ void _mapcache_source_wms_render_map(mapcache_context *ctx, mapcache_source *pso
   apr_table_setn(params,"HEIGHT",apr_psprintf(ctx->pool,"%d",map->height));
   apr_table_setn(params,"FORMAT","image/png");
   apr_table_setn(params,"SRS",map->grid_link->grid->srs);
-  ctx->log(ctx,MAPCACHE_ERROR,"MAP sdtyøle %s", map->style);
+  ctx->log(ctx,MAPCACHE_ERROR,"MAP style %s|", map->style);
   apr_table_setn(params,"STYLE",map->style);
 
   apr_table_overlap(params,wms->getmap_params,APR_OVERLAP_TABLES_SET);
