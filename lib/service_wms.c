@@ -820,6 +820,8 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
             goto proxies;
           }
         }
+        ctx->log(ctx,MAPCACHE_ERROR, "BEFORE setting map style %s", apr_table_get(params,"STYLE"));
+        ctx->log(ctx,MAPCACHE_ERROR, "BEFORE setting map styles %s", apr_table_get(params,"STYLES"));
         if(type == MAPCACHE_REQUEST_GET_TILE) {
           mapcache_tile *tile = mapcache_tileset_tile_create(ctx->pool, tileset, grid_link);
           tile->x = x;
