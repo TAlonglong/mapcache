@@ -59,7 +59,6 @@ void mapcache_source_render_map(mapcache_context *ctx, mapcache_source *source, 
         apr_sleep((int)(wait*1000000));  /* apr_sleep expects microseconds */
       }
     }
-    ctx->log(ctx,MAPCACHE_ERROR,"---------INSIDE mapcache_source_render_map %s", map->style);
     source->_render_map(ctx, source, map);
     if(!GC_HAS_ERROR(ctx))
       break;
@@ -93,8 +92,6 @@ void mapcache_source_query_info(mapcache_context *ctx, mapcache_source *source, 
 
 void mapcache_legend_graphic_source_query_info(mapcache_context *ctx, mapcache_source *source, mapcache_legend_graphic *lg) {
   int i;
-  ctx->log(ctx, MAPCACHE_ERROR, "calling query_info on source (%s): tileset=%s, ",
-           source->name, lg->map.tileset->name);
 #ifdef DEBUG
   ctx->log(ctx, MAPCACHE_DEBUG, "calling query_info on source (%s): tileset=%s, grid=%s,",
            source->name, fi->map.tileset->name, fi->map.grid_link->grid->name);
@@ -112,9 +109,7 @@ void mapcache_legend_graphic_source_query_info(mapcache_context *ctx, mapcache_s
         apr_sleep((int)(wait*1000000));  /* apr_sleep expects microseconds */
       }
     }
-    ctx->log(ctx, MAPCACHE_ERROR, "HER before legend graphic query info");
     source->_legend_graphic_query_info(ctx, source, lg);
-    ctx->log(ctx, MAPCACHE_ERROR, "HER Atter legend graphic query info");
     if(!GC_HAS_ERROR(ctx))
       break;
   }

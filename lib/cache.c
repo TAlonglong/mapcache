@@ -170,8 +170,6 @@ void mapcache_cache_tile_multi_set(mapcache_context *ctx, mapcache_cache *cache,
     }
   } else {
     for( i=0;i<ntiles;i++ ) {
-      ctx->log(ctx,MAPCACHE_ERROR,"BEFORE mapcache_cache_tile_set %s", (tiles+i)->style);
-      ctx->log(ctx,MAPCACHE_ERROR,"BEFORE mapcache_cache_tile_set %s", (tiles+i)->style);
       mapcache_cache_tile_set(ctx, cache, tiles+i);
     }
   }
