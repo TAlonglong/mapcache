@@ -250,7 +250,6 @@ static void _mapcache_cache_disk_tilecache_tile_key(mapcache_context *ctx, mapca
       }
       *path = mapcache_util_str_replace(ctx->pool,*path, "{dim}", dimstring);
     }
-    ctx->log(ctx,MAPCACHE_ERROR,"Repacing style _mapcache_cache_disk_tilecache_tile_key %s",tile->style);
     *path = mapcache_util_str_replace(ctx->pool,*path, "{style}", tile->style);
   }
   if(!*path) {
@@ -317,7 +316,6 @@ static void _mapcache_cache_disk_template_tile_key(mapcache_context *ctx, mapcac
     }
     *path = mapcache_util_str_replace(ctx->pool,*path, "{dim}", dimstring);
   }
-  ctx->log(ctx,MAPCACHE_ERROR,"Repacing style _mapcache_cache_disk_template_tile_key %s",tile->style);
   *path = mapcache_util_str_replace(ctx->pool,*path, "{style}", tile->style);
 
   if(!*path) {
@@ -367,7 +365,6 @@ static int _mapcache_cache_disk_has_tile(mapcache_context *ctx, mapcache_cache *
   apr_finfo_t finfo;
   int rv;
   mapcache_cache_disk *cache = (mapcache_cache_disk*)pcache;
-  ctx->log(ctx,MAPCACHE_ERROR,"before tile_key %s", tile->style);
   cache->tile_key(ctx, cache, tile, &filename);
   if(GC_HAS_ERROR(ctx)) {
     return MAPCACHE_FALSE;
@@ -413,12 +410,10 @@ static int _mapcache_cache_disk_get(mapcache_context *ctx, mapcache_cache *pcach
   apr_mmap_t *tilemmap;
   mapcache_cache_disk *cache = (mapcache_cache_disk*)pcache;
 
-  ctx->log(ctx,MAPCACHE_ERROR,"checking for tile style %s",tile->style);
   cache->tile_key(ctx, cache, tile, &filename);
   if(GC_HAS_ERROR(ctx)) {
     return MAPCACHE_FAILURE;
   }
-  ctx->log(ctx,MAPCACHE_ERROR,"checking for tile %s",filename);
   ctx->log(ctx,MAPCACHE_DEBUG,"checking for tile %s",filename);
   if((rv=apr_file_open(&f, filename,
 #ifndef NOMMAP
@@ -512,9 +507,7 @@ static void _mapcache_cache_disk_set(mapcache_context *ctx, mapcache_cache *pcac
   }
 #endif
 
-  ctx->log(ctx,MAPCACHE_ERROR,"write checking for tile %s ",tile->style);
   cache->tile_key(ctx, cache, tile, &filename);
-  ctx->log(ctx,MAPCACHE_ERROR,"write checking for tile %s %s",filename, tile->style);
   GC_CHECK_ERROR(ctx);
   if ( cache->detect_blank ) {
     if(!tile->raw_image) {

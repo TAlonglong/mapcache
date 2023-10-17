@@ -361,8 +361,6 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
                                mapcache_core_respond_to_error(ctx));
   }
 
-  ctx->log(ctx,MAPCACHE_ERROR,"HER request type %d", request->type);
-
   if(request->type == MAPCACHE_REQUEST_GET_CAPABILITIES) {
     mapcache_request_get_capabilities *req_caps = (mapcache_request_get_capabilities*)request;
     request_rec *original;

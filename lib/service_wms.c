@@ -296,7 +296,6 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
 
     layerxml = ezxml_add_child(toplayer,"Layer",0);
     ezxml_set_attr(layerxml, "cascaded", "1");
-    ctx->log(ctx,MAPCACHE_ERROR,"HER queryable %s %d %d", tileset->name, tileset->source, tileset->source->info_formats);
 
     ezxml_set_attr(layerxml, "queryable", (tileset->source && tileset->source->info_formats)?"1":"0");
 
@@ -422,7 +421,6 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     } else {
       ezxml_set_txt(ezxml_add_child(tsxml,"Format",0),"image/unknown");
     }
-    ctx->log(ctx,MAPCACHE_ERROR,"Force set LAYERS ezxml_add_child %s", tileset->name);
     ezxml_set_txt(ezxml_add_child(tsxml,"Layers",0),tileset->name);
     /*optional vendor specific tileset styles*/
     for(i=0; i<tileset->styles->nelts; i++) {
@@ -443,11 +441,9 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     for(i=0; i<tileset->styles->nelts; i++) {
       char *style = APR_ARRAY_IDX(tileset->styles,i,char*);
       char *styleurl = NULL;
-      ctx->log(ctx,MAPCACHE_ERROR,"New style %s", style);
       tmpxml = ezxml_add_child(layerxml,"Style",0);
       ezxml_set_txt(ezxml_add_child(tmpxml,"Name",0),style);
       ezxml_set_txt(ezxml_add_child(tmpxml,"Title",0),style);
-      ctx->log(ctx,MAPCACHE_ERROR,"URL to USE %s", url);
       tmpxml = ezxml_add_child(tmpxml,"LegendURL",0);
       ezxml_set_attr(tmpxml,"width","250");
       ezxml_set_attr(tmpxml,"height","250");
@@ -558,7 +554,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
     } else if( ! strcasecmp(str,"getfeatureinfo") ) {
       //nothing
     } else if( ! strcasecmp(str,"getlegendgraphic") ) {
-      ctx->log(ctx,MAPCACHE_ERROR,"Is Get legende graphic");
       isGetLegendGraphic = 1;
     } else {
       errcode = 501;
@@ -655,8 +650,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
   }
 
   if(isGetMap) {
-    ctx->log(ctx,MAPCACHE_ERROR,"GETMAP STYLES %s", apr_table_get(params,"STYLES"));
-    ctx->log(ctx,MAPCACHE_ERROR,"GETMAP STYLE %s", apr_table_get(params,"STYLE"));
     str = apr_table_get(params,"LAYERS");
     if(!str) {
       errcode = 400;
@@ -820,8 +813,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
             goto proxies;
           }
         }
-        ctx->log(ctx,MAPCACHE_ERROR, "BEFORE setting map style %s", apr_table_get(params,"STYLE"));
-        ctx->log(ctx,MAPCACHE_ERROR, "BEFORE setting map styles %s", apr_table_get(params,"STYLES"));
         if(type == MAPCACHE_REQUEST_GET_TILE) {
           mapcache_tile *tile = mapcache_tileset_tile_create(ctx->pool, tileset, grid_link);
           tile->x = x;
@@ -829,7 +820,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           tile->z = z;
           str = apr_table_get(params,"STYLES");
           if(str) {
-            ctx->log(ctx,MAPCACHE_ERROR, "setting map styleS %s", str);
             tile->style = str;
           }
           mapcache_tileset_tile_validate(ctx,tile);
@@ -848,9 +838,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           map->extent = extent;
           str = apr_table_get(params,"STYLES");
           if(str) {
-            ctx->log(ctx,MAPCACHE_ERROR, "setting map style %s", str);
             map->style = str;
-            ctx->log(ctx,MAPCACHE_ERROR, "AFTER setting map style %s", map->style);
           }
           map_req->maps[map_req->nmaps++] = map;
           dimtable = map->dimensions;
@@ -904,24 +892,18 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       goto proxies;
     } else {
       mapcache_tileset *tileset = mapcache_configuration_get_tileset(config,str);
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl layer %s", str);
       if(!tileset || mapcache_imageio_is_raw_tileset(tileset)) {
         errcode = 404;
         errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request with invalid layer %s", str);
         goto proxies;
       }
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl AFTER layers %p|", tileset);
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl %s %s", tileset->name, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,0,char*));
       if(!tileset->source || !tileset->source->legend_graphic_info_formats) {
         errcode = 404;
         errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request for unqueryable layer %s %s", str, tileset->source->legend_graphic_info_formats);
         goto proxies;
       }
-      ctx->log(ctx,MAPCACHE_ERROR,"HER after source");
       lg = mapcache_tileset_legend_graphic_create(ctx->pool, tileset);
-      ctx->log(ctx,MAPCACHE_ERROR,"HER after mapcache_tileset_legend_graphic_create");
       lg->format = apr_pstrdup(ctx->pool,apr_table_get(params,"FORMAT"));
-      ctx->log(ctx,MAPCACHE_ERROR,"HER gl formats %s", lg->format);
       if(!lg->format) {
         errcode = 400;
         errmsg = "received wms getlegendgraphic request with no FORMAT";
@@ -929,19 +911,15 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       }
       if(lg->map.dimensions) {
         int i;
-        ctx->log(ctx,MAPCACHE_ERROR,"HER gl DIMENSION %s", lg->format);
         for(i=0; i<tileset->dimensions->nelts; i++) {
           mapcache_dimension *dimension = APR_ARRAY_IDX(tileset->dimensions,i,mapcache_dimension*);
           const char *value;
-          ctx->log(ctx,MAPCACHE_ERROR,"HER gl loop dimension %s", lg->format);
-          ctx->log(ctx,MAPCACHE_ERROR,"HER gl loop dimension %s", dimension->name);
           if((value = (char*)apr_table_get(params,dimension->name)) != NULL) {
             mapcache_map_set_requested_dimension(ctx,&lg->map,dimension->name,value);
             GC_CHECK_ERROR(ctx);
           }
         }
       }
-      ctx->log(ctx,MAPCACHE_ERROR,"Is Get legende graphic STYLE %s", apr_table_get(params,"STYLE"));
       str = apr_table_get(params,"STYLE");
       if(!str) {
         errcode = 400;
@@ -949,15 +927,12 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
         goto proxies;
       } else {
           lg->style = str;
+          lg->map.style = str;
       }
       req_lg = apr_pcalloc(ctx->pool, sizeof(mapcache_request_get_legend_graphic));
-      ctx->log(ctx,MAPCACHE_ERROR,"HER palloc");
       req_lg->request.type = MAPCACHE_REQUEST_GET_LEGENDGRAPHIC;
-      ctx->log(ctx,MAPCACHE_ERROR,"HER type");
       req_lg->lg = lg;
-      ctx->log(ctx,MAPCACHE_ERROR,"HER assign");
       *request = (mapcache_request*)req_lg;
-      ctx->log(ctx,MAPCACHE_ERROR,"HER assign req_lq");
     }
   } else {
     int i;
@@ -1036,7 +1011,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       fi->i = x;
       fi->j = y;
       fi->format = apr_pstrdup(ctx->pool,apr_table_get(params,"INFO_FORMAT"));
-      ctx->log(ctx,MAPCACHE_ERROR,"HER format %s", fi->format);
       if(!fi->format) {
         errcode = 400;
         errmsg = "received wms getfeatureinfo request with no INFO_FORMAT";
@@ -1064,7 +1038,6 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
 
     }
   }
-  ctx->log(ctx,MAPCACHE_ERROR,"Before proxies %d %c", errcode, request);
 
 proxies:
   /*
@@ -1083,12 +1056,10 @@ proxies:
          wms_service->getmap_strategy == MAPCACHE_GETMAP_ASSEMBLE)
       )) {
     /* if we're here, then we have succesfully parsed the request and can treat it ourselves, i.e. from cached tiles */
-    ctx->log(ctx,MAPCACHE_ERROR,"200 and request");
     return;
   } else {
     /* look to see if we can proxy the request somewhere*/
     int i,j;
-    ctx->log(ctx,MAPCACHE_ERROR,"Proxies");
     for(i=0; i<wms_service->forwarding_rules->nelts; i++) {
       mapcache_forwarding_rule *rule = APR_ARRAY_IDX(wms_service->forwarding_rules,i,mapcache_forwarding_rule*);
       int got_a_match = 1;

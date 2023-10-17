@@ -368,8 +368,6 @@ mapcache_map* mapcache_assemble_maps(mapcache_context *ctx, mapcache_map **maps,
   nmaptiles = apr_pcalloc(ctx->pool,nmaps*sizeof(int));
   effectively_used_grid_links = apr_pcalloc(ctx->pool,nmaps*sizeof(mapcache_grid_link*));
   for(i=0; i<nmaps; i++) {
-    ctx->log(ctx,MAPCACHE_ERROR,"mapcache assemble maps %d|", i);
-    ctx->log(ctx,MAPCACHE_ERROR,"mapcache assemble maps style %s|", maps[i]->style);
     mapcache_tileset_get_map_tiles(ctx,maps[i]->tileset,maps[i]->grid_link,
                                    &maps[i]->extent, maps[i]->width, maps[i]->height,
                                    &(nmaptiles[i]), &(maptiles[i]), &(effectively_used_grid_links[i]),
@@ -382,10 +380,8 @@ mapcache_map* mapcache_assemble_maps(mapcache_context *ctx, mapcache_map **maps,
   for(i=0; i<nmaps; i++) {
     int j;
     for(j=0; j<nmaptiles[i]; j++) {
-      ctx->log(ctx,MAPCACHE_ERROR,"mapcache maptiles %s|", maptiles[i][j]->style);
       tiles[ntiles] = maptiles[i][j];
       tiles[ntiles]->dimensions = mapcache_requested_dimensions_clone(ctx->pool, maps[i]->dimensions);
-      ctx->log(ctx,MAPCACHE_ERROR,"mapcache maptiles after set %s|", tiles[ntiles]->style);
       ntiles++;
     }
   }
@@ -412,8 +408,6 @@ mapcache_map* mapcache_assemble_maps(mapcache_context *ctx, mapcache_map **maps,
         maps[i]->expires = tile->expires;
       }
     }
-    ctx->log(ctx,MAPCACHE_ERROR,"for nmaps %d|", i);
-    ctx->log(ctx,MAPCACHE_ERROR,"for nmaps hasdata %d|", hasdata);
     if(hasdata) {
       maps[i]->raw_image = mapcache_tileset_assemble_map_tiles(ctx,maps[i]->tileset,effectively_used_grid_links[i],
                            &maps[i]->extent, maps[i]->width, maps[i]->height,
@@ -463,7 +457,6 @@ mapcache_http_response *mapcache_core_get_map(mapcache_context *ctx, mapcache_re
   format = NULL;
   response = mapcache_http_response_create(ctx->pool);
 
-  ctx->log(ctx,MAPCACHE_ERROR, "strategy %d, %d, %d|", req_map->getmap_strategy, MAPCACHE_GETMAP_ASSEMBLE, MAPCACHE_GETMAP_FORWARD);
   if(req_map->getmap_strategy == MAPCACHE_GETMAP_ASSEMBLE) {
     basemap = mapcache_assemble_maps(ctx, req_map->maps, req_map->nmaps, req_map->resample_mode);
     if(GC_HAS_ERROR(ctx)) return NULL;
@@ -623,9 +616,7 @@ mapcache_http_response *mapcache_core_get_legendgraphic(mapcache_context *ctx,
   if(tileset->source->legend_graphic_info_formats) {
     int i;
     mapcache_http_response *response;
-    ctx->log(ctx,MAPCACHE_ERROR,"HER mapcache_core_get_legendgraphic");
     for(i=0; i<tileset->source->legend_graphic_info_formats->nelts; i++) {
-      ctx->log(ctx,MAPCACHE_ERROR,"HER loop %s %s ", lg->format, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,i,char*));
       if(!strcmp(lg->format, APR_ARRAY_IDX(tileset->source->legend_graphic_info_formats,i,char*))) {
         break;
       }
@@ -634,16 +625,11 @@ mapcache_http_response *mapcache_core_get_legendgraphic(mapcache_context *ctx,
       ctx->set_error(ctx,404, "unsupported legend graphic format %s",lg->format);
       return NULL;
     }
-    ctx->log(ctx,MAPCACHE_ERROR,"HER 2 mapcache_core_get_legendgraphic");
     mapcache_legend_graphic_source_query_info(ctx, tileset->source, lg);
     if(GC_HAS_ERROR(ctx)) return NULL;
-    ctx->log(ctx,MAPCACHE_ERROR,"HER 3 mapcache_core_get_legendgraphic");
     response = mapcache_http_response_create(ctx->pool);
-    ctx->log(ctx,MAPCACHE_ERROR,"HER 4 mapcache_core_get_legendgraphic");
     response->data = lg->data;
-    ctx->log(ctx,MAPCACHE_ERROR,"HER 5 mapcache_core_get_legendgraphic");
     apr_table_set(response->headers,"Content-Type",lg->format);
-    ctx->log(ctx,MAPCACHE_ERROR,"HER 6 mapcache_core_get_legendgraphic");
     return response;
   } else {
     ctx->set_error(ctx,404, "tileset %s does not support legend graphic requests",
