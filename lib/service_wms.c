@@ -284,7 +284,6 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
     const char *title;
     const char *abstract;
     const char *keywords;
-    const char *styles;
     char *stylename = NULL;
     int i;
     apr_hash_this(tileindex_index,&key,&keylen,(void**)&tileset);
@@ -820,7 +819,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           tile->z = z;
           str = apr_table_get(params,"STYLES");
           if(str) {
-            tile->style = str;
+            tile->style = (char*)str;
           }
           mapcache_tileset_tile_validate(ctx,tile);
           if(GC_HAS_ERROR(ctx)) {
@@ -838,7 +837,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
           map->extent = extent;
           str = apr_table_get(params,"STYLES");
           if(str) {
-            map->style = str;
+            map->style = (char*)str;
           }
           map_req->maps[map_req->nmaps++] = map;
           dimtable = map->dimensions;
@@ -899,7 +898,7 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
       }
       if(!tileset->source || !tileset->source->legend_graphic_info_formats) {
         errcode = 404;
-        errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request for unqueryable layer %s %s", str, tileset->source->legend_graphic_info_formats);
+        errmsg = apr_psprintf(ctx->pool,"received wms getlegendgraphic request for unqueryable layer %s.", str);
         goto proxies;
       }
       lg = mapcache_tileset_legend_graphic_create(ctx->pool, tileset);
@@ -926,8 +925,8 @@ void _mapcache_service_wms_parse_request(mapcache_context *ctx, mapcache_service
         errmsg = "received wms request GetLegendGraphic with no style";
         goto proxies;
       } else {
-          lg->style = str;
-          lg->map.style = str;
+          lg->style = (char*)str;
+          lg->map.style = (char*)str;
       }
       req_lg = apr_pcalloc(ctx->pool, sizeof(mapcache_request_get_legend_graphic));
       req_lg->request.type = MAPCACHE_REQUEST_GET_LEGENDGRAPHIC;
