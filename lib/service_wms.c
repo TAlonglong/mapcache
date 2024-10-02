@@ -363,10 +363,12 @@ void _create_capabilities_wms(mapcache_context *ctx, mapcache_request_get_capabi
         if(dimval) {
           ezxml_set_txt(dimxml,dimval);
         }
-        default_value = dimension->get_default_value(ctx,dimension,tileset,NULL,NULL);
-        if (default_value){
-          dimension->default_value = APR_ARRAY_IDX(default_value,0,char *);
-          ezxml_set_attr(dimxml,"default",dimension->default_value);
+        if ( dimension->get_default_value != NULL ){
+          default_value = dimension->get_default_value(ctx,dimension,tileset,NULL,NULL);
+          if (default_value){
+            dimension->default_value = APR_ARRAY_IDX(default_value,0,char *);
+            ezxml_set_attr(dimxml,"default",dimension->default_value);
+          }
         }
       }
     }

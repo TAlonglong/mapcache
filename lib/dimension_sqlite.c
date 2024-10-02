@@ -400,6 +400,7 @@ mapcache_dimension* mapcache_dimension_sqlite_create(mapcache_context *ctx, apr_
   dimension->dimension.configuration_parse_xml = _mapcache_dimension_sqlite_parse_xml;
   dimension->dimension.get_all_entries = _mapcache_dimension_sqlite_get_all_entries;
   dimension->dimension.get_all_ogc_formatted_entries = _mapcache_dimension_sqlite_get_all_entries;
+  dimension->dimension.get_default_value = NULL;
   return (mapcache_dimension*)dimension;
 #else
   ctx->set_error(ctx,400,"Sqlite dimension support requires SQLITE support to be built in");

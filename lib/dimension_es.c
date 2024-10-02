@@ -258,6 +258,7 @@ mapcache_dimension* mapcache_dimension_elasticsearch_create(mapcache_context *ct
   dimension->dimension.configuration_parse_xml = _mapcache_dimension_elasticsearch_parse_xml;
   dimension->dimension.get_all_entries = _mapcache_dimension_elasticsearch_get_all_entries;
   dimension->dimension.get_all_ogc_formatted_entries = _mapcache_dimension_elasticsearch_get_all_entries;
+  dimension->dimension.get_default_value = NULL;
   return (mapcache_dimension*)dimension;
 }
 

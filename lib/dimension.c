@@ -260,7 +260,7 @@ static void _mapcache_dimension_values_parse_xml(mapcache_context *ctx, mapcache
   mapcache_dimension_values *dimension;
   ezxml_t child_node = ezxml_child(node,"value");
   dimension = (mapcache_dimension_values*)dim;
-  
+
   if(!child_node) {
     ctx->set_error(ctx,400,"failed to parse %s values: no <value> children supplied",dim->class_name);
     return;
@@ -307,6 +307,7 @@ mapcache_dimension* mapcache_dimension_values_create(mapcache_context *ctx, apr_
   dimension->dimension.configuration_parse_xml = _mapcache_dimension_values_parse_xml;
   dimension->dimension.get_all_entries = _mapcache_dimension_values_get_all_entries;
   dimension->dimension.get_all_ogc_formatted_entries = _mapcache_dimension_values_get_all_entries;
+  dimension->dimension.get_default_value = NULL;
   return (mapcache_dimension*)dimension;
 }
 
@@ -322,6 +323,7 @@ mapcache_dimension* mapcache_dimension_regex_create(mapcache_context *ctx, apr_p
   dimension->dimension.configuration_parse_xml = _mapcache_dimension_regex_parse_xml;
   dimension->dimension.get_all_entries = _mapcache_dimension_regex_get_all_entries;
   dimension->dimension.get_all_ogc_formatted_entries = _mapcache_dimension_regex_get_all_entries;
+  dimension->dimension.get_default_value = NULL;
   return (mapcache_dimension*)dimension;
 }
 
