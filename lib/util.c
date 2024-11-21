@@ -560,6 +560,11 @@ char* mapcache_util_get_tile_key(mapcache_context *ctx, mapcache_tile *tile, cha
                          mapcache_util_get_tile_dimkey(ctx,tile,sanitized_chars,sanitize_to),
                          separator,NULL);
     }
+    if(tile->style) {
+      path = apr_pstrcat(ctx->pool,path,
+                         tile->style, separator,
+                         NULL);
+    }
     path = apr_pstrcat(ctx->pool,path,
                        apr_psprintf(ctx->pool, "%d", tile->z),separator,
                        apr_psprintf(ctx->pool, "%d", tile->y),separator,
